@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Introduction to Functional Programming in JavaScript</title>
+    <meta charset="utf-8">
+      <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+<textarea id="source">
+class: center, middle, inverse
+
+# Introduction to Functional Programming in JavaScript
+
+---
+name: default
+layout: true
+
+---
+# Overview
+
+### Functional Programming and Why Learn It?
+
+### Functional Programming in JavaScript
+
+### Partial Application
+
+### Currying
+
+### Point Free
+
+### Composition
+
+### Demo
+
+---
+layout: false
+class: center, middle, inverse
+
+# Functional Programming and Why Learn It?
+
+---
+template: default
+layout: true
+
+### Functional Programming and Why Learn It?
+
+---
+# What is Functional Programming?
+
+- Functions are the fundamental building blocks of a program
+
+- Functions are like mathematical equations, the declare a relationship between two or more entities
+
+- FP languages tend to provide at least some of (but not limited to) these features:
+
+    - First Class Functions - functions are a data type like everything else
+
+        - can be stored in variables, passed as arguments, created in and returned from functions
+
+    - Higher Order Functions - functions operate on other functions
+
+    - Lexical Closures - a function can access the variables in its parent scope
+---
+# Why learn Functional Programming at All?
+
+- The goals of Functional Programming are:
+
+    - Shorter programs by requiring fewer lines of code for equivalent behavior
+
+    - Less code to write leads to greater program correctness
+
+    - More expressive programs
+
+- A different way of looking at things
+
+    - Sometimes, a problem that is difficult in one type of programming turns out to be easy in another
+---
+# Factorial Implementations
+
+**JavaScript**
+```JavaScript
+function factorial(n) {
+    var sum = 1;
+    while (n > 1) {
+        sum *= n;
+        n -= 1;
+    }
+    return sum;
+}
+```
+
+**Haskell**
+```Haskell
+factorial n = product [1..n]
+```
+---
+# Pure Functions
+
+Functional programming works best when you write and consume pure functions.
+
+- A pure function always evaluates to the same result for a given set of inputs
+
+- The result of a pure function cannot depend on any state that may change during execution of the program
+
+- Generating the result does not cause any observable side effect
+
+In other words, a pure function returns a result that depends on nothing other than the function's
+arguments and does nothing else.
+---
+# Examples of Pure and Impure Functions
+
+**Pure Functions**
+
+- `sin(x)` - returning the sine of a number `x`
+
+- `length(s)` - returning the size of a string `s`
+
+**Impure functions**
+
+- Any function that uses a non-local variable such as global variables or a variable from outside a closure
+
+- A function that returns the current time; at different times it will return different results
+
+- `random()` returning a random number; each call returns a different result
+
+- `console.log(s)` - causes output to the UI as a side effect
+---
+layout: false
+class: center, middle
+
+# Questions?
+---
+layout: false
+class: center, middle, inverse
+
+# Functional Programming in JavaScript
+
+---
+template: default
+layout: true
+
+### Functional Programming in JavaScript
+
+---
+# Why learn FP in JavaScript?
+
+- JavaScript is probably about 2/3 object oriented and 1/3 functional
+
+- Do not miss out on that 1/3
+
+- You are probably already using functional programming
+
+```JavaScript
+// Method declarations take advantage of first class functions
+MyClass.prototype.myMethod = function () {};
+
+// Array.forEach is a higher order function
+[1, 2, 3].forEach(function (n) {
+    console.log(n);
+});
+
+// Inner functions form a lexical closure
+MyViewModel.prototype.load = function () {
+    var self = this;
+    this.service.load()
+        .then(function (data) {
+            self.data = data;
+        });
+};
+```
+---
+# Ramda
+
+- While JavaScript supports functional programming, it does not always make it easy
+
+- We will use the Ramda library to demonstrate FP techniques
+
+- Ramda provides functional programming support in JavaScript by implementing:
+
+    - Functional programming features
+
+    - Syntax to encourage functional programming technique
+
+**Factorial Implementation Using Ramda**
+
+```JavaScript
+function factorial(n) {
+    return R.product(R.range(1, n));
+}
+
+// Or in point-free form (more on this later)
+var factorial = R.compose(R.product, R.range(1));
+```
+---
+# Functions vs. Expressions
+
+- Many of the code examples will use functions in cases where a normal expression could have been used. For example:
+
+```JavaScript
+var result = R.inc(n);  // is equivalent to
+var result = n + 1;
+```
+
+- Remember, in FP languages functions are first class data types. They can be passed into or out of other functions.
+
+- Using a function provides more options and flexibility with the code than a simple expression would.
+
+```JavaScript
+function modifyNumber(fn, n) {
+    return fn(n);
+}
+
+var result = modifyNumber(R.inc, n);    // this works
+var result = modifyNumber(+ 1, n);      // this does not
+```
+---
+layout: false
+class: center, middle
+
+# Questions?
+---
+layout: false
+class: center, middle, inverse
+
+# Partial Application
+
+---
+template: default
+layout: true
+
+### Partial Application
+
+---
+# Callback Functions
+
+- Many higher-order functions accept one or more functions as an argument
+
+- The higher-order function in turn will call the function or functions passed in
+
+- This pattern is so common that it has a name: a callback
+
+```JavaScript
+MyViewModel.prototype.load = function () {
+    this.service.getData()
+        .then(processData);
+}
+
+function processData(data) {
+    // do something with the data
+}
+```
+
+- Where does that `data` argument in `processData` come from?
+---
+# Callback Function Arguments
+
+ - From the definitions of `$.ajax` and `Promise` we know the callback will be executed with the data returned from
+    `$.ajax`.
+
+ - What happens when `processData` needs more information?
+
+```JavaScript
+function processData(self, data) {
+    // do something with self and the data
+}
+```
+
+- We need a way to pass in some of the arguments now, and allow the rest of the arguments to be passed in later
+---
+# Partial Application Defined
+
+- This is known as *partial application*
+
+- We are *partially applying* arguments to a function
+
+- The rest of the arguments will be applied later
+
+- Implemented in native JavaScript using `bind`
+
+```JavaScript
+MyViewModel.prototype.load = function () {
+    this.service.getData()
+        .then(processData.bind(null, this));
+    // the first argument to bind allows you to set the context
+    // of the function, we are not using that in this case
+}
+
+function processData(self, data) {
+    // self === this from MyViewModel.load
+    // data === the result of the ajax call
+}
+```
+---
+# Partial Application Applied
+
+- Partial application is not limited to callback functions
+
+- Can use to build more specialized versions of existing functions
+
+```JavaScript
+function add(a, b) {
+    return a + b;
+}
+
+add(10, 20);
+//=> 30
+
+var add10 = add.bind(null, 10);
+
+add10(20);
+//=> 30
+
+var add10to20 = add.bind(null, 10, 20);
+
+add10to20();
+//=> 30
+```
+---
+# Partial Application and Ramda
+
+- Partial application is a common functional programming operation
+
+- Ramda provides a function version of partial application:  the `partial` function
+
+- Being a function, it also has the advantage of being first class data
+
+- The `bind` method of `Function` does not have this feature
+
+```JavaScript
+function add(a, b) {
+    return a + b;
+}
+
+var add10 = add.bind(null, 10); // is equivalent to
+var add10 = R.partial(add, [10]);
+
+var add10to20 = add.bind(null, 10, 20); // is equivalent to
+var add10to20 = R.partial(add, [10, 20]);
+```
+---
+layout: false
+class: center, middle
+
+# Questions?
+---
+layout: false
+class: center, middle, inverse
+
+# Currying
+
+---
+template: default
+layout: true
+
+### Currying
+
+---
+# What is Currying?
+
+- Applying some arguments to a function and delay the rest to later is a common technique for building functions
+
+- To enhance partial application, functional languages support the Curry operation
+
+- Although there are some differences, Curry can be thought of as automatic partial application
+
+- When a function has been curried, passing less than the expected number of arguments will return a function
+   that expects the remaining arguments
+
+- Once all the arguments have been passed, the function will execute
+---
+# Using Curry to Build Functions
+
+- Like partial application, curry is used to build specialized versions of generic functions
+
+- If the original function has been curried, there is no need to do partial application
+
+- Curry will do the work for you
+
+- All Ramda functions have already been curried
+
+```JavaScript
+var add = R.curry(function add(a, b) {
+    return a + b;
+});
+
+var add10 = add(10);
+add10(20);
+//=> 30;
+
+// another way of expressing this that you may see
+add(10)(20);
+//=> 30;
+```
+---
+#  Using Map to Create an Adapter
+
+```JavaScript
+function toModel(dto) {
+    var model = new Model();
+    model.someThing1 = dto.someThing1;
+    model.someThing2 = dto.someThing2;
+    return model;
+}
+
+// 1. R.map() accepts a callback and a list
+// 2. Since R.map() is curried, passing in only the callback returns
+//    a new function that accepts the list
+var toModels = R.map(toModel);
+```
+---
+## Using Filter to get the Positive Numbers from an Array
+
+```JavaScript
+var list = [1, -2, 3, -4, 5, -6];
+// if the function you are using has its arguments in the wrong
+// order, you can use R.__ as a placeholder
+var getPositives = R.filter(R.gt(R.__, 0));
+
+// or flip the arguments
+var getPositives = R.filter(R.flip(R.gt)(0));
+```
+
+Let's look at flip in more detail
+
+```JavaScript
+R.gt(5, 0); //=> true
+R.gt(0, 5); //=> false
+
+// flip reverses the order of the first two arguments of a function
+var flippedGt = R.flip(R.gt);
+flippedGt(5, 0); //=> false
+flippedGt(0, 5); //=> true
+```
+---
+# Point Free
+
+Returning all the visible widgets of a dashboard UI.
+
+Original
+```JavaScript
+function getVisibleWidgets(widgets) {
+    return R.filter(isVisible, widgets);
+}
+
+function isVisible(widget) {
+    return widget.isVisible();
+}
+```
+
+With Curry
+```JavaScript
+var isVisible = R.invoker(0, 'isVisible');
+
+var getVisibleWidgets = R.filter(isVisible);
+```
+---
+# Point Free (cont.)
+
+- In the original version `getVisibleWidgets` accepts an argument called `widgets` and `isVisible` accepts `widget`
+
+- In the curried version, neither `isVisable` or `getVisibleWidgets` defines an argument, they just wait for whatever
+    is passed in next
+
+- This style of programming where the arguments disappear is known as point-free style (or tacit programming)
+
+- The name *Point Free* comes from combinatory logic, where arguments are called *points*
+
+- Many in the functional programming community view this as the "holy grail" of code; all functions and no arguments
+
+- On the other hand, others feel this style is unnecessarily obscure, calling it "pointless style"
+---
+# Writing Functions to Support Currying
+
+- When writing your functions you may want to keep currying in mind
+
+- Even if the function will not be curried, the same strategy helps with partial application
+
+- Currying and partial application go left-to-right
+
+- So, place the arguments less likely to change first (on the left)
+---
+layout: false
+class: center, middle
+
+# Questions?
+---
+layout: false
+class: center, middle, inverse
+
+# Composition
+
+---
+template: default
+layout: true
+
+### Composition
+
+---
+# Imperative vs Declarative Programming
+
+- Imperative Programming
+
+    - Programs consist of a sequence of statements, often organized into subroutines, functions, and methods
+
+    - It is what you have been doing all along: procedural and object-oriented programming
+
+- Declarative Programming
+
+    - Declarative programs do not contain a sequence of statements to be performed
+
+    - Functionality is *declared* as a combination of smaller pieces
+
+    - Focus on what is to be done, now how
+
+    - Examples: SQL, Regular Expressions, CSS
+
+    - Functional languages are declarative
+---
+# Functions of Functions
+
+- Imperatively executing a series of functions:
+
+```JavaScript
+function myFunction(a) {
+    var b = performStep1(a),
+        c = performStep2(b),
+        d = performStep3(c);
+    return d;
+}
+```
+
+- Since the output of each function is used as the argument to the next function, this function can be rewritten as:
+
+```JavaScript
+function myFunction(a) {
+    return performStep3(performStep2(performStep1(a)));
+}
+```
+---
+# Function Composition
+
+```JavaScript
+function myFunction(a) {
+    return performStep3(performStep2(performStep1(a)));
+}
+```
+
+- This chaining of function calls is a common pattern that has a name: *function composition*
+
+- `myFunction` is composed of `performStep1`, `performStep2`, and `performStep3`
+
+- The argument `a` should look redundant; seems like there should be a way to write this function point-free
+
+- We cannot use currying, it expects the functions to be passed into each other
+
+- In this case it is the results of the functions that are passed into each other
+
+- We need a new operation: *compose*
+---
+# Creating a Function Using Composition
+
+- Ramda provides a `compose` function that implements composition
+
+- It accepts any number of functions and returns a new function that implements the composition of those functions
+
+- It is curried, so that it works seamlessly with point-free style
+
+- The composed function can be written, or *declared*, as:
+
+```JavaScript
+var myFunction = R.compose(performStep3, performStep2, performStep1);
+```
+
+- "But the functions are backwards, performStep1 should come first!"
+
+- It matches the order of the imperative function; both are based on mathematical representations of
+    functions: `h( g( f(x) ) )`
+
+```JavaScript
+function myFunction(a) {
+    return performStep3(performStep2(performStep1(a)));
+}
+```
+---
+# Writing Functions to Support Composition
+
+- Functions that are intended to be consumed in the functional style work best when they are written as pure functions
+
+- Each function in the composition (except the first) consumes the return value of the previous
+
+- You may only consume functions that accept one argument
+
+    - Each function should be written to accept only one argument
+
+    - If the function accepts more than one argument, reduce it to one using partial application or currying
+---
+# Factorial
+
+```JavaScript
+// imperative style
+function factorial(n) {
+    var sum = 1;
+    while (n > 1) {
+        sum *= n;
+        n -= 1;
+    }
+    return sum;
+}
+
+// still imperative, but simplified with Ramda
+function factorial(n) {
+    return R.product(R.range(1, n));
+}
+
+// declarative using composition
+var factorial = R.compose(R.product, R.range(1));
+```
+---
+layout: false
+class: center, middle
+
+# Questions?
+---
+layout: false
+class: center, middle, inverse
+
+# Demo
+
+---
+template: default
+layout: true
+
+### Demo
+
+---
+# FizzBuzz
+
+FizzBuzz is a classic interview problem for programming candidates
+
+* Write a program that prints the numbers from 1 to 100, but...
+
+* For multiples of three print “Fizz” instead of the number
+
+* For the multiples of five print “Buzz”
+
+* For numbers which are multiples of both three and five print “FizzBuzz”
+
+The output looks something like this:
+
+```
+...
+53
+Fizz
+Buzz
+56
+Fizz
+58
+59
+FizzBuzz
+61
+...
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+doFizzBuzz(START, END);
+
+function doFizzBuzz(start, end) {
+    for (var i = start; i <= end; i++) {
+        if (isFizzBuzz(i)) {
+            console.log('FizzBuzz');
+        } else if (isFizz(i)) {
+            console.log('Fizz');
+        } else if (isBuzz(i)) {
+            console.log('Buzz');
+        } else {
+            console.log(i);
+        }
+    }
+}
+
+function isFizzBuzz(n) {
+    return isFizz(n) && isBuzz(n);
+}
+
+function isFizz(n) { return n % 3 === 0; }
+
+function isBuzz(n) { return n % 5 === 0; }
+```
+---
+```JavaScript
+var R = require('ramda');       // reference Ramda, hereafter omitted
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log); // <-- create log function
+
+doFizzBuzz(START, END);
+
+function doFizzBuzz(start, end) {
+    for (var i = start; i <= end; i++) {
+        if (isFizzBuzz(i)) {
+            log('FizzBuzz');    // <-- replace console.log
+        } else if (isFizz(i)) {
+            log('Fizz');        // <-- replace console.log
+        } else if (isBuzz(i)) {
+            log('Buzz');        // <-- replace console.log
+        } else {
+            log(i);             // <-- replace console.log
+        }
+    }
+}
+
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+
+function isFizz(n) { return n % 3 === 0; }
+
+function isBuzz(n) { return n % 5 === 0; }
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+
+doFizzBuzz(START, END);
+
+function doFizzBuzz(start, end) {
+    R.forEach(function (i) {    // <-- replace for loop
+        if (isFizzBuzz(i)) {
+            log('FizzBuzz');
+        } else if (isFizz(i)) {
+            log('Fizz');
+        } else if (isBuzz(i)) {
+            log('Buzz');
+        } else {
+            log(i);
+        }
+    }, R.range(start, end + 1)); // <-- replace for loop
+}
+
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+
+function isFizz(n) { return n % 3 === 0; }
+
+function isBuzz(n) { return n % 5 === 0; }
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+
+doFizzBuzz(START, END);
+
+function doFizzBuzz(start, end) {
+    R.forEach(function (n) {    // <-- rename i to n
+        if (isFizzBuzz(n)) {    // <-- rename i to n
+            log('FizzBuzz');
+        } else if (isFizz(n)) { // <-- rename i to n
+            log('Fizz');
+        } else if (isBuzz(n)) { // <-- rename i to n
+            log('Buzz');
+        } else {
+            log(n);             // <-- rename i to n
+        }
+    }, R.range(start, end + 1));
+}
+
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+
+function isFizz(n) { return n % 3 === 0; }
+
+function isBuzz(n) { return n % 5 === 0; }
+```
+---
+```JavaScript
+var START = 1, END = 100;
+var log = R.bind(console.log, log);
+
+doFizzBuzz(START, END);
+
+function doFizzBuzz(start, end) {
+    // convert to R.map()
+    var results = R.map(evaluateN, R.range(start, end + 1));
+    R.forEach(log, results);
+}
+
+function evaluateN(n) {             // <-- extract function
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';          // <-- switch from log to return
+    } else if (isFizz(n)) {
+        return 'Fizz';              // <-- switch from log to return
+    } else if (isBuzz(n)) {
+        return 'Buzz';              // <-- switch from log to return
+    } else {
+        return n;                   // <-- switch from log to return
+    }
+}
+
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+function isFizz(n) { return n % 3 === 0; }
+function isBuzz(n) { return n % 5 === 0; }
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log),
+    logAll = R.forEach(log);        // <-- define logAll
+
+doFizzBuzz(START, END);
+
+function doFizzBuzz(start, end) {
+    var results = R.map(evaluateN, R.range(start, end + 1));
+    logAll(results);                // <-- call logAll
+}
+function evaluateN(n) {
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';
+    } else if (isFizz(n)) {
+        return 'Fizz';
+    } else if (isBuzz(n)) {
+        return 'Buzz';
+    } else {
+        return n;
+    }
+}
+
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+function isFizz(n) { return n % 3 === 0; }
+function isBuzz(n) { return n % 5 === 0; }
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log),
+    logAll = R.forEach(log),
+    evaluateAll = R.map(evaluateN); // <-- define evaluateAll
+
+doFizzBuzz(START, END);
+
+function doFizzBuzz(start, end) {
+    // call evaluateAll and remove temporary variable
+    logAll(evaluateAll(R.range(start, end + 1)));
+}
+function evaluateN(n) {
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';
+    } else if (isFizz(n)) {
+        return 'Fizz';
+    } else if (isBuzz(n)) {
+        return 'Buzz';
+    } else {
+        return n;
+    }
+}
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+function isFizz(n) { return n % 3 === 0; }
+function isBuzz(n) { return n % 5 === 0; }
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log),
+    logAll = R.forEach(log),
+    evaluateAll = R.map(evaluateN);
+
+doFizzBuzz(R.range(START, END + 1));    // <-- pull up range
+
+function doFizzBuzz(range) {
+    logAll(evaluateAll(range));         // <-- pull up range
+}
+function evaluateN(n) {
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';
+    } else if (isFizz(n)) {
+        return 'Fizz';
+    } else if (isBuzz(n)) {
+        return 'Buzz';
+    } else {
+        return n;
+    }
+}
+
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+function isFizz(n) { return n % 3 === 0; }
+function isBuzz(n) { return n % 5 === 0; }
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log); // <-- put on own line
+var logAll = R.forEach(log);        // <-- put on own line
+var evaluateAll = R.map(evaluateN); // <-- put on own line
+var doFizzBuzz = R.compose(logAll, evaluateAll); // <-- compose
+
+doFizzBuzz(R.range(START, R.inc(END))); // <-- remove expression
+
+function evaluateN(n) {
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';
+    } else if (isFizz(n)) {
+        return 'Fizz';
+    } else if (isBuzz(n)) {
+        return 'Buzz';
+    } else {
+        return n;
+    }
+}
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+function isFizz(n) { return n % 3 === 0; }
+function isBuzz(n) { return n % 5 === 0; }
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+var logAll = R.forEach(log);
+var evaluateAll = R.map(evaluateN);
+var doFizzBuzz = R.compose(logAll, evaluateAll);
+
+doFizzBuzz(R.range(START, R.inc(END)));
+
+function evaluateN(n) {
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';
+    } else if (isFizz(n)) {
+        return 'Fizz';
+    } else if (isBuzz(n)) {
+        return 'Buzz';
+    } else {
+        return n;
+    }
+}
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+function isFizz(n) { return R.modulo(n, 3) === 0; } // <-- R.modulo
+function isBuzz(n) { return R.modulo(n, 5) === 0; } // <-- R.modulo
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+var logAll = R.forEach(log);
+var evaluateAll = R.map(evaluateN);
+var doFizzBuzz = R.compose(logAll, evaluateAll);
+var modulo3 = R.modulo(R.__, 3);    // <-- define modulo3
+var modulo5 = R.modulo(R.__, 5);    // <-- define modulo5
+
+doFizzBuzz(R.range(START, R.inc(END)));
+
+function evaluateN(n) {
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';
+    } else if (isFizz(n)) {
+        return 'Fizz';
+    } else if (isBuzz(n)) {
+        return 'Buzz';
+    } else {
+        return n;
+    }
+}
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+function isFizz(n) { return modulo3(n) === 0; } // <-- call modulo3
+function isBuzz(n) { return modulo5(n) === 0; } // <-- call modulo5
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+var logAll = R.forEach(log);
+var evaluateAll = R.map(evaluateN);
+var doFizzBuzz = R.compose(logAll, evaluateAll);
+var modulo3 = R.modulo(R.__, 3);
+var modulo5 = R.modulo(R.__, 5);
+
+doFizzBuzz(R.range(START, R.inc(END)));
+
+function evaluateN(n) {
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';
+    } else if (isFizz(n)) {
+        return 'Fizz';
+    } else if (isBuzz(n)) {
+        return 'Buzz';
+    } else {
+        return n;
+    }
+}
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+// introduce R.identical()
+function isFizz(n) { return R.identical(0, modulo3(n)); }
+function isBuzz(n) { return R.identical(0, modulo5(n)); }
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+var logAll = R.forEach(log);
+var evaluateAll = R.map(evaluateN);
+var doFizzBuzz = R.compose(logAll, evaluateAll);
+var modulo3 = R.modulo(R.__, 3);
+var modulo5 = R.modulo(R.__, 5);
+var isZero = R.identical(0);    // <-- define isZero
+
+doFizzBuzz(R.range(START, R.inc(END)));
+
+function evaluateN(n) {
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';
+    } else if (isFizz(n)) {
+        return 'Fizz';
+    } else if (isBuzz(n)) {
+        return 'Buzz';
+    } else {
+        return n;
+    }
+}
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+function isFizz(n) { return isZero(modulo3(n)); } // <-- call isZero
+function isBuzz(n) { return isZero(modulo5(n)); } // <-- call isZero
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+var logAll = R.forEach(log);
+var evaluateAll = R.map(evaluateN);
+var doFizzBuzz = R.compose(logAll, evaluateAll);
+var modulo3 = R.modulo(R.__, 3);
+var modulo5 = R.modulo(R.__, 5);
+var isZero = R.identical(0);
+var isFizz = R.compose(isZero, modulo3); // <-- compose isFizz
+var isBuzz = R.compose(isZero, modulo5); // <-- compose isBuzz
+
+doFizzBuzz(R.range(START, R.inc(END)));
+
+function evaluateN(n) {
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';
+    } else if (isFizz(n)) {
+        return 'Fizz';
+    } else if (isBuzz(n)) {
+        return 'Buzz';
+    } else {
+        return n;
+    }
+}
+function isFizzBuzz(n) { return isFizz(n) && isBuzz(n); }
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+var logAll = R.forEach(log);
+var evaluateAll = R.map(evaluateN);
+var doFizzBuzz = R.compose(logAll, evaluateAll);
+var modulo3 = R.modulo(R.__, 3);
+var modulo5 = R.modulo(R.__, 5);
+var isZero = R.identical(0);
+var isFizz = R.compose(isZero, modulo3);
+var isBuzz = R.compose(isZero, modulo5);
+var isFizzBuzz = R.both(isFizz, isBuzz); // <-- define isFizzBuzz
+
+doFizzBuzz(R.range(START, R.inc(END)));
+
+function evaluateN(n) {
+    if (isFizzBuzz(n)) {
+        return 'FizzBuzz';
+    } else if (isFizz(n)) {
+        return 'Fizz';
+    } else if (isBuzz(n)) {
+        return 'Buzz';
+    } else {
+        return n;
+    }
+}
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+var logAll = R.forEach(log);
+var evaluateAll = R.map(evaluateN);
+var doFizzBuzz = R.compose(logAll, evaluateAll);
+var modulo3 = R.modulo(R.__, 3);
+var modulo5 = R.modulo(R.__, 5);
+var isZero = R.identical(0);
+var isFizz = R.compose(isZero, modulo3);
+var isBuzz = R.compose(isZero, modulo5);
+var isFizzBuzz = R.both(isFizz, isBuzz);
+
+doFizzBuzz(R.range(START, R.inc(END)));
+
+function evaluateN(n) { // <-- rewrite using R.cond()
+    return R.cond([
+        [isFizzBuzz, function (n) { return 'FizzBuzz' }],
+        [isFizz, function (n) { return 'Fizz' }],
+        [isBuzz, function (n) { return 'Buzz' }],
+        [R.T, function (n) { return n }]
+    ])(n);
+}
+
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+var logAll = R.forEach(log);
+var evaluateAll = R.map(evaluateN);
+var doFizzBuzz = R.compose(logAll, evaluateAll);
+var modulo3 = R.modulo(R.__, 3);
+var modulo5 = R.modulo(R.__, 5);
+var isZero = R.identical(0);
+var isFizz = R.compose(isZero, modulo3);
+var isBuzz = R.compose(isZero, modulo5);
+var isFizzBuzz = R.both(isFizz, isBuzz);
+
+doFizzBuzz(R.range(START, R.inc(END)));
+
+function evaluateN(n) {
+    return R.cond([
+        [isFizzBuzz, function (n) { return 'FizzBuzz' }],
+        [isFizz, function (n) { return 'Fizz' }],
+        [isBuzz, function (n) { return 'Buzz' }],
+        [R.T, R.identity] // <-- replace function with R.identity()
+    ])(n);
+}
+
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+var logAll = R.forEach(log);
+var evaluateAll = R.map(evaluateN);
+var doFizzBuzz = R.compose(logAll, evaluateAll);
+var modulo3 = R.modulo(R.__, 3);
+var modulo5 = R.modulo(R.__, 5);
+var isZero = R.identical(0);
+var isFizz = R.compose(isZero, modulo3);
+var isBuzz = R.compose(isZero, modulo5);
+var isFizzBuzz = R.both(isFizz, isBuzz);
+var FIZZBUZZ = R.always('FizzBuzz'); // <-- introduce "constant"
+var FIZZ = R.always('Fizz');         // <-- introduce "constant"
+var BUZZ = R.always('Buzz');         // <-- introduce "constant"
+
+
+doFizzBuzz(R.range(START, R.inc(END)));
+
+function evaluateN(n) {
+    return R.cond([
+        [isFizzBuzz, FIZZBUZZ], // <-- apply "constant"
+        [isFizz, FIZZ],         // <-- apply "constant"
+        [isBuzz, BUZZ],         // <-- apply "constant"
+        [R.T, R.identity]
+    ])(n);
+}
+```
+---
+```JavaScript
+var START = 1, END = 100;
+
+var log = R.bind(console.log, log);
+var logAll = R.forEach(log);
+var modulo3 = R.modulo(R.__, 3);
+var modulo5 = R.modulo(R.__, 5);
+var isZero = R.identical(0);
+var isFizz = R.compose(isZero, modulo3);
+var isBuzz = R.compose(isZero, modulo5);
+var isFizzBuzz = R.both(isFizz, isBuzz);
+var FIZZBUZZ = R.always('FizzBuzz');
+var FIZZ = R.always('Fizz');
+var BUZZ = R.always('Buzz');
+var evaluateN = R.cond([    // define evaluateN (curry)
+    [isFizzBuzz, FIZZBUZZ],
+    [isFizz, FIZZ],
+    [isBuzz, BUZZ],
+    [R.T, R.identity]
+]);
+var evaluateAll = R.map(evaluateN);                 // <-- reorder
+var doFizzBuzz = R.compose(logAll, evaluateAll);    // <-- reorder
+
+doFizzBuzz(R.range(START, R.inc(END)));
+```
+---
+
+layout: false
+class: center, middle
+
+# Questions?
+
+---
+# Recommended Reading
+
+### JavaScript
+
+* This Presentation
+
+* [Why Ramda?](http://fr.umio.us/why-ramda/)
+
+* [Professor Frisby's Mostly Adequate Guide to Functional Programming](https://drboolean.gitbooks.io/mostly-adequate-guide/content/)
+
+### Other Functional Languages
+
+* [The Little Schemer](https://www.amazon.com/Little-Schemer-Daniel-P-Friedman/dp/0262560992/ref=sr_1_1?s=books&ie=UTF8&qid=1470247474&sr=1-1&keywords=little+schemer)
+
+* [Clojure for the Brave and True](https://www.amazon.com/Clojure-Brave-True-Ultimate-Programmer/dp/1593275919/ref=sr_1_1?s=books&ie=UTF8&qid=1470247594&sr=1-1&keywords=clojure+for+the+brave+and+true)
+
+* [Haskell Programming From First Principles](http://haskellbook.com/)
+
+</textarea>
+    <script src="assets/js/remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
